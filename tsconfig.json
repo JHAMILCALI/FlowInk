@@ -32,9 +32,15 @@
       "@excalidraw/math": ["./packages/math/src/index.ts"],
       "@excalidraw/math/*": ["./packages/math/src/*"],
       "@excalidraw/utils": ["./packages/utils/src/index.ts"],
-      "@excalidraw/utils/*": ["./packages/utils/src/*"]
+      "@excalidraw/utils/*": ["./packages/utils/src/*"],
+      "@flowink/project-schema": ["./packages/flowink-project-schema/src/index.ts"],
+      "@flowink/animation-core": ["./packages/flowink-animation-core/src/index.ts"],
+      "@flowink/presentation-core": ["./packages/flowink-presentation-core/src/index.ts"],
+      "@flowink/player-runtime": ["./packages/flowink-player-runtime/src/index.ts"],
+      "@flowink/export-runtime": ["./packages/flowink-export-runtime/src/index.ts"],
+      "@flowink/ui": ["./packages/flowink-ui/src/index.tsx"]
     }
   },
-  "include": ["packages", "excalidraw-app"],
+  "include": ["packages", "excalidraw-app", "flowink-app"],
   "exclude": ["examples", "dist", "types", "tests"]
 }

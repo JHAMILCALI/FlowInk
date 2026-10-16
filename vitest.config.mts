@@ -70,6 +70,41 @@ export default defineConfig({
         find: /^@excalidraw\/laser-pointer\/(.*?)/,
         replacement: path.resolve(__dirname, "./packages/laser-pointer/src/$1"),
       },
+      {
+        find: /^@flowink\/project-schema$/,
+        replacement: path.resolve(
+          __dirname,
+          "./packages/flowink-project-schema/src/index.ts",
+        ),
+      },
+      {
+        find: /^@flowink\/animation-core$/,
+        replacement: path.resolve(
+          __dirname,
+          "./packages/flowink-animation-core/src/index.ts",
+        ),
+      },
+      {
+        find: /^@flowink\/presentation-core$/,
+        replacement: path.resolve(
+          __dirname,
+          "./packages/flowink-presentation-core/src/index.ts",
+        ),
+      },
+      {
+        find: /^@flowink\/player-runtime$/,
+        replacement: path.resolve(
+          __dirname,
+          "./packages/flowink-player-runtime/src/index.ts",
+        ),
+      },
+      {
+        find: /^@flowink\/export-runtime$/,
+        replacement: path.resolve(
+          __dirname,
+          "./packages/flowink-export-runtime/src/index.ts",
+        ),
+      },
     ],
   },
   //@ts-ignore
