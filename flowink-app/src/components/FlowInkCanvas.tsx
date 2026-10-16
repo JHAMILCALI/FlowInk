@@ -1,0 +1,120 @@
+import { useEffect, useMemo, useRef } from "react";
+
+import {
+  CaptureUpdateAction,
+  Excalidraw,
+  type ElementRenderOverrides,
+} from "@excalidraw/excalidraw";
+import type {
+  AppState,
+  ExcalidrawImperativeAPI,
+} from "@excalidraw/excalidraw/types";
+import { sampleCamera, sampleTracks } from "@flowink/animation-core";
+
+import { serializeScene, toExcalidrawInitialData } from "../services/scene";
+import { getActiveSlide, useFlowInkStore } from "../stores/useFlowInkStore";
+
+export const FlowInkCanvas = ({
+  onApi,
+  onCameraRotation,
+}: {
+  onApi: (api: ExcalidrawImperativeAPI | null) => void;
+  onCameraRotation?: (rotation: number) => void;
+}) => {
+  const slide = useFlowInkStore(getActiveSlide);
+  const mode = useFlowInkStore((state) => state.mode);
+  const playhead = useFlowInkStore((state) => state.playhead);
+  const updateActiveScene = useFlowInkStore((state) => state.updateActiveScene);
+  const setSelectedElementIds = useFlowInkStore(
+    (state) => state.setSelectedElementIds,
+  );
+  const apiRef = useRef<ExcalidrawImperativeAPI | null>(null);
+  const initialData = useMemo(
+    () => toExcalidrawInitialData(slide.scene),
+    [slide.id],
+  );
+
+  useEffect(() => {
+    const api = apiRef.current;
+    if (!api) {
+      return;
+    }
+    if (mode !== "studio") {
+      api.setElementRenderOverrides(null);
+      onCameraRotation?.(0);
+      return;
+    }
+    const samples = sampleTracks(
+      slide.scene.elements,
+      slide.timeline.tracks,
+      playhead,
+    );
+    const overrides = new Map<
+      string,
+      { opacity: number; offset: { x: number; y: number } }
+    >();
+    for (const element of slide.scene.elements) {
+      const sample = samples.get(element.id);
+      if (!sample) {
+        continue;
+      }
+      overrides.set(element.id, {
+        opacity: sample.opacity,
+        offset: { x: sample.x - element.x, y: sample.y - element.y },
+      });
+    }
+    api.setElementRenderOverrides(overrides as ElementRenderOverrides);
+
+    const camera = sampleCamera(slide.camera.keyframes, playhead);
+    if (camera) {
+      const state = api.getAppState();
+      api.updateScene({
+        appState: {
+          scrollX: state.width / (2 * camera.zoom) - camera.x,
+          scrollY: state.height / (2 * camera.zoom) - camera.y,
+          zoom: { value: camera.zoom } as AppState["zoom"],
+        },
+        captureUpdate: CaptureUpdateAction.NEVER,
+      });
+      onCameraRotation?.(camera.rotation);
+    }
+  }, [mode, onCameraRotation, playhead, slide]);
+
+  useEffect(
+    () => () => {
+      onApi(null);
+    },
+    [onApi],
+  );
+
+  return (
+    <Excalidraw
+      initialData={initialData}
+      theme="dark"
+      ui={{ enabled: { zoom: true, scrollBackToContent: true } }}
+      autoFocus
+      onExcalidrawAPI={(api) => {
+        apiRef.current = api;
+        onApi(api);
+      }}
+      onChange={(elements, appState, files) => {
+        const selected = Object.keys(appState.selectedElementIds).filter(
+          (id) => appState.selectedElementIds[id],
+        );
+        setSelectedElementIds(selected);
+        updateActiveScene(serializeScene(elements, appState, files));
+      }}
+      UIOptions={{
+        canvasActions: {
+          changeViewBackgroundColor: false,
+          clearCanvas: false,
+          export: false,
+          loadScene: false,
+          saveAsImage: false,
+          saveToActiveFile: false,
+          toggleTheme: false,
+        },
+      }}
+    />
+  );
+};
