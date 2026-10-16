@@ -4,6 +4,7 @@
   "packageManager": "yarn@1.22.22",
   "workspaces": [
     "excalidraw-app",
+    "flowink-app",
     "packages/*",
     "examples/*"
   ],
@@ -55,6 +56,7 @@
     "build:common": "yarn --cwd ./packages/common build:esm",
     "build:element": "yarn --cwd ./packages/element build:esm",
     "build:excalidraw": "yarn --cwd ./packages/excalidraw build:esm",
+    "build:flowink": "yarn --cwd ./flowink-app build",
     "build:math": "yarn --cwd ./packages/math build:esm",
     "build:fractional-indexing": "yarn --cwd ./packages/fractional-indexing build:esm",
     "build:laser-pointer": "yarn --cwd ./packages/laser-pointer build:esm",
@@ -63,6 +65,7 @@
     "build": "yarn --cwd ./excalidraw-app build",
     "build:preview": "yarn --cwd ./excalidraw-app build:preview",
     "start": "yarn --cwd ./excalidraw-app start",
+    "start:flowink": "yarn --cwd ./flowink-app start",
     "start:production": "yarn --cwd ./excalidraw-app start:production",
     "start:example": "yarn build:packages && yarn --cwd ./examples/with-script-in-browser start",
     "test:all": "yarn test:typecheck && yarn test:code && yarn test:other && yarn test:app --watch=false",
@@ -70,6 +73,8 @@
     "test:code": "eslint --max-warnings=0 --ext .js,.ts,.tsx .",
     "test:other": "yarn prettier --list-different",
     "test:typecheck": "tsc",
+    "test:flowink": "yarn --cwd ./flowink-app test",
+    "test:flowink:typecheck": "yarn --cwd ./flowink-app typecheck",
     "test:update": "yarn test:app --update --watch=false",
     "test": "yarn test:app",
     "test:coverage": "vitest --coverage",

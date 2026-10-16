@@ -1,0 +1,10 @@
+{
+  "extends": "../tsconfig.json",
+  "compilerOptions": {
+    "rootDir": "..",
+    "types": ["vite/client", "vitest/globals", "@testing-library/jest-dom"],
+    "noEmit": true
+  },
+  "include": ["src", "../packages/flowink-*", "../packages/excalidraw/*.d.ts", "../excalidraw-app/*.d.ts"],
+  "exclude": ["dist", "node_modules"]
+}
