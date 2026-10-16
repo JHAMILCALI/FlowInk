@@ -1,0 +1,11 @@
+{
+  "name": "@flowink/animation-core",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "dependencies": {
+    "@flowink/project-schema": "0.1.0"
+  }
+}
