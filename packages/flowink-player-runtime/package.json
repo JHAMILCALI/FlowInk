@@ -1,0 +1,13 @@
+{
+  "name": "@flowink/player-runtime",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "dependencies": {
+    "@flowink/animation-core": "0.1.0",
+    "@flowink/presentation-core": "0.1.0",
+    "@flowink/project-schema": "0.1.0"
+  }
+}
