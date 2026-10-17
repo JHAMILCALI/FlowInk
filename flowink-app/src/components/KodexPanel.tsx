@@ -1,8 +1,16 @@
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import { CaptureUpdateAction } from "@excalidraw/excalidraw";
 import type { ExcalidrawImperativeAPI } from "@excalidraw/excalidraw/types";
 
+import {
+  AI_PROVIDER_SESSION_KEY,
+  createAIProviderConfig,
+  providerLabel,
+  requestAIAgentPlan,
+  type AIProvider,
+  type AIProviderConfig,
+} from "../services/aiAgent";
 import {
   createKodexDeck,
   createKodexSlide,
@@ -15,20 +23,57 @@ import {
   createTemplateSlide,
 } from "../services/presets";
 import { getActiveSlide, useFlowInkStore } from "../stores/useFlowInkStore";
-import { CloseIcon, KodexIcon, SendIcon, SparkIcon } from "./Icons";
+import {
+  CloseIcon,
+  KodexIcon,
+  SendIcon,
+  SettingsIcon,
+  SparkIcon,
+} from "./Icons";
 
 interface KodexMessage {
   id: number;
   role: "assistant" | "user";
   text: string;
   change?: string;
+  error?: boolean;
 }
 
 const quickPrompts = [
   "Crea una presentación de 5 diapositivas sobre MCP",
   "Agrega una diapositiva sobre arquitectura",
-  "Aplica una transición smart",
+  "Aplica una transición smart y cambia al modo oscuro",
 ];
+
+const providers: { id: AIProvider; label: string }[] = [
+  { id: "local", label: "FlowInk local" },
+  { id: "openai", label: "OpenAI / Codex" },
+  { id: "anthropic", label: "Anthropic / Claude" },
+  { id: "compatible", label: "API compatible" },
+];
+
+const isProvider = (value: unknown): value is AIProvider =>
+  value === "local" ||
+  value === "openai" ||
+  value === "anthropic" ||
+  value === "compatible";
+
+const restoreConfig = (raw: string | null): AIProviderConfig | null => {
+  if (!raw) return null;
+  try {
+    const candidate = JSON.parse(raw) as Partial<AIProviderConfig>;
+    if (!isProvider(candidate.provider)) return null;
+    return {
+      provider: candidate.provider,
+      model: typeof candidate.model === "string" ? candidate.model : "",
+      endpoint:
+        typeof candidate.endpoint === "string" ? candidate.endpoint : "",
+      apiKey: typeof candidate.apiKey === "string" ? candidate.apiKey : "",
+    };
+  } catch {
+    return null;
+  }
+};
 
 export const KodexPanel = ({
   api,
@@ -40,6 +85,7 @@ export const KodexPanel = ({
   onClose: () => void;
 }) => {
   const project = useFlowInkStore((state) => state.project);
+  const editorTheme = useFlowInkStore((state) => state.editorTheme);
   const activeSlide = useFlowInkStore(getActiveSlide);
   const applyProject = useFlowInkStore((state) => state.applyKodexProject);
   const insertSlide = useFlowInkStore((state) => state.insertKodexSlide);
@@ -51,32 +97,63 @@ export const KodexPanel = ({
   const setTheme = useFlowInkStore((state) => state.setEditorTheme);
   const setMode = useFlowInkStore((state) => state.setMode);
   const [prompt, setPrompt] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [showSettings, setShowSettings] = useState(false);
+  const [config, setConfig] = useState<AIProviderConfig>(() =>
+    createAIProviderConfig(),
+  );
   const [messages, setMessages] = useState<KodexMessage[]>([
     {
       id: 1,
       role: "assistant",
-      text: "Hola, soy Kodex. Puedo construir y editar esta presentación mientras trabajas.",
+      text: "Hola, soy Kodex. Conecta tu IA favorita y modificaré esta presentación mientras trabajas.",
     },
   ]);
   const nextMessageId = useRef(2);
   const composerRef = useRef<HTMLTextAreaElement>(null);
+  const activeRequest = useRef<AbortController | null>(null);
   const slidePosition = useMemo(
     () => project.slides.findIndex((slide) => slide.id === activeSlide.id) + 1,
     [activeSlide.id, project.slides],
   );
+  const ready =
+    config.provider === "local" ||
+    Boolean(
+      config.endpoint.trim() &&
+        config.model.trim() &&
+        (config.provider === "compatible" || config.apiKey.trim()),
+    );
+
+  useEffect(() => {
+    const ownerWindow = composerRef.current?.ownerDocument.defaultView;
+    const stored = restoreConfig(
+      ownerWindow?.sessionStorage.getItem(AI_PROVIDER_SESSION_KEY) ?? null,
+    );
+    if (stored) setConfig(stored);
+  }, []);
+
+  useEffect(
+    () => () => {
+      activeRequest.current?.abort();
+    },
+    [],
+  );
 
   const execute = (intent: KodexIntent): { text: string; change?: string } => {
+    const currentProject = useFlowInkStore.getState().project;
     switch (intent.type) {
       case "create-deck": {
         const deck = createKodexDeck(intent.topic, intent.count);
         applyProject(deck);
         return {
-          text: `Listo. Construí una presentación sobre “${intent.topic}” con ${intent.count} diapositivas.`,
+          text: `Construí una presentación sobre “${intent.topic}” con ${intent.count} diapositivas.`,
           change: `${intent.count} slides creadas`,
         };
       }
       case "add-slide": {
-        insertSlide(createKodexSlide(intent.topic, project.slides.length));
+        insertSlide(
+          createKodexSlide(intent.topic, currentProject.slides.length),
+        );
         return {
           text: `Añadí una diapositiva visual sobre “${intent.topic}” después de la actual.`,
           change: "Slide añadida",
@@ -95,7 +172,7 @@ export const KodexPanel = ({
           change: "Slide duplicada",
         };
       case "delete-slide":
-        if (project.slides.length === 1) {
+        if (currentProject.slides.length === 1) {
           return {
             text: "No puedo eliminar la única diapositiva del proyecto.",
           };
@@ -159,23 +236,109 @@ export const KodexPanel = ({
     }
   };
 
-  const submit = (value = prompt) => {
+  const appendAssistant = (
+    text: string,
+    options: Pick<KodexMessage, "change" | "error"> = {},
+  ) => {
+    setMessages((current) => [
+      ...current,
+      {
+        id: nextMessageId.current++,
+        role: "assistant",
+        text,
+        ...options,
+      },
+    ]);
+  };
+
+  const submit = async (value = prompt) => {
     const nextPrompt = value.trim();
-    if (!nextPrompt) return;
-    const userMessage: KodexMessage = {
-      id: nextMessageId.current++,
-      role: "user",
-      text: nextPrompt,
-    };
-    const result = execute(interpretKodexCommand(nextPrompt));
-    const assistantMessage: KodexMessage = {
-      id: nextMessageId.current++,
-      role: "assistant",
-      ...result,
-    };
-    setMessages((current) => [...current, userMessage, assistantMessage]);
+    if (!nextPrompt || busy) return;
+    setMessages((current) => [
+      ...current,
+      {
+        id: nextMessageId.current++,
+        role: "user",
+        text: nextPrompt,
+      },
+    ]);
     setPrompt("");
-    composerRef.current?.focus();
+
+    if (config.provider === "local") {
+      const result = execute(interpretKodexCommand(nextPrompt));
+      appendAssistant(result.text, { change: result.change });
+      composerRef.current?.focus();
+      return;
+    }
+    if (!ready) {
+      appendAssistant("Configura el proveedor antes de enviar instrucciones.", {
+        error: true,
+      });
+      setShowSettings(true);
+      return;
+    }
+
+    const ownerWindow = composerRef.current?.ownerDocument.defaultView;
+    if (!ownerWindow) return;
+    const controller = new ownerWindow.AbortController();
+    activeRequest.current = controller;
+    setBusy(true);
+    try {
+      const plan = await requestAIAgentPlan(
+        config,
+        nextPrompt,
+        {
+          projectTitle: project.metadata.title,
+          slideNames: project.slides.map((slide) => slide.name),
+          activeSlideName: activeSlide.name,
+          activeSlideNumber: slidePosition,
+          elementCount: activeSlide.scene.elements.filter(
+            (element) => !element.isDeleted,
+          ).length,
+          theme: editorTheme,
+        },
+        ownerWindow.fetch.bind(ownerWindow),
+        controller.signal,
+      );
+      const results = plan.actions.map(execute);
+      const changes = results
+        .map((result) => result.change)
+        .filter((change): change is string => Boolean(change));
+      appendAssistant(
+        plan.reply || results.map((result) => result.text).join(" "),
+        { change: changes.length ? changes.join(" · ") : undefined },
+      );
+    } catch (error) {
+      if (!controller.signal.aborted) {
+        appendAssistant(
+          error instanceof Error
+            ? error.message
+            : "No se pudo conectar con la IA.",
+          { error: true },
+        );
+      }
+    } finally {
+      if (activeRequest.current === controller) activeRequest.current = null;
+      setBusy(false);
+      composerRef.current?.focus();
+    }
+  };
+
+  const saveConnection = () => {
+    const ownerWindow = composerRef.current?.ownerDocument.defaultView;
+    ownerWindow?.sessionStorage.setItem(
+      AI_PROVIDER_SESSION_KEY,
+      JSON.stringify(config),
+    );
+    setShowSettings(false);
+    appendAssistant(
+      config.provider === "local"
+        ? "Modo local activado. No se necesita conexión externa."
+        : `${providerLabel(config.provider)} quedó conectado con el modelo ${
+            config.model || "sin especificar"
+          }.`,
+      { change: "Proveedor actualizado" },
+    );
   };
 
   return (
@@ -187,13 +350,115 @@ export const KodexPanel = ({
         <span className="fi-kodex__identity">
           <strong>Kodex</strong>
           <small>
-            <i /> Presentation agent
+            <i data-ready={ready} /> {providerLabel(config.provider)} agent
           </small>
         </span>
+        <button
+          type="button"
+          className={showSettings ? "is-active" : ""}
+          onClick={() => setShowSettings((visible) => !visible)}
+          aria-label="Configure AI provider"
+          title="Configure AI provider"
+        >
+          <SettingsIcon />
+        </button>
         <button type="button" onClick={onClose} aria-label="Close Kodex">
           <CloseIcon />
         </button>
       </header>
+
+      {showSettings && (
+        <form
+          className="fi-kodex-settings"
+          onSubmit={(event) => {
+            event.preventDefault();
+            saveConnection();
+          }}
+        >
+          <div className="fi-kodex-settings__heading">
+            <span>
+              <strong>Conectar una IA</strong>
+              <small>La credencial vive sólo en esta sesión.</small>
+            </span>
+            <span className={ready ? "is-ready" : ""}>
+              {ready ? "LISTO" : "FALTA CONFIGURAR"}
+            </span>
+          </div>
+
+          <label>
+            Proveedor
+            <select
+              value={config.provider}
+              onChange={(event) =>
+                setConfig(
+                  createAIProviderConfig(event.target.value as AIProvider),
+                )
+              }
+            >
+              {providers.map((provider) => (
+                <option key={provider.id} value={provider.id}>
+                  {provider.label}
+                </option>
+              ))}
+            </select>
+          </label>
+
+          {config.provider !== "local" && (
+            <>
+              <label>
+                Modelo
+                <input
+                  value={config.model}
+                  onChange={(event) =>
+                    setConfig((current) => ({
+                      ...current,
+                      model: event.target.value,
+                    }))
+                  }
+                  placeholder="Nombre exacto del modelo"
+                />
+              </label>
+              <label>
+                Endpoint
+                <input
+                  type="url"
+                  value={config.endpoint}
+                  onChange={(event) =>
+                    setConfig((current) => ({
+                      ...current,
+                      endpoint: event.target.value,
+                    }))
+                  }
+                  placeholder="https://…"
+                />
+              </label>
+              <label>
+                API key {config.provider === "compatible" && "(opcional)"}
+                <input
+                  type="password"
+                  autoComplete="off"
+                  value={config.apiKey}
+                  onChange={(event) =>
+                    setConfig((current) => ({
+                      ...current,
+                      apiKey: event.target.value,
+                    }))
+                  }
+                  placeholder="••••••••••••••••"
+                />
+              </label>
+            </>
+          )}
+
+          <p>
+            También puedes conectar Ollama, LM Studio o tu propio proxy mediante
+            “API compatible”.
+          </p>
+          <button type="submit" className="fi-kodex-settings__save">
+            Guardar conexión
+          </button>
+        </form>
+      )}
 
       <div className="fi-kodex__context">
         <SparkIcon />
@@ -210,7 +475,9 @@ export const KodexPanel = ({
         {messages.map((message) => (
           <div
             key={message.id}
-            className={`fi-kodex-message fi-kodex-message--${message.role}`}
+            className={`fi-kodex-message fi-kodex-message--${message.role} ${
+              message.error ? "is-error" : ""
+            }`}
           >
             {message.role === "assistant" && (
               <span className="fi-kodex-message__mark">
@@ -223,16 +490,28 @@ export const KodexPanel = ({
             </div>
           </div>
         ))}
+        {busy && (
+          <div className="fi-kodex-message fi-kodex-message--thinking">
+            <span className="fi-kodex-message__mark">
+              <KodexIcon />
+            </span>
+            <div>
+              <span />
+              <span />
+              <span />
+            </div>
+          </div>
+        )}
       </div>
 
-      {messages.length === 1 && (
+      {messages.length === 1 && !showSettings && (
         <div className="fi-kodex__suggestions">
           <span>Prueba una instrucción</span>
           {quickPrompts.map((quickPrompt) => (
             <button
               type="button"
               key={quickPrompt}
-              onClick={() => submit(quickPrompt)}
+              onClick={() => void submit(quickPrompt)}
             >
               {quickPrompt}
             </button>
@@ -247,23 +526,30 @@ export const KodexPanel = ({
           value={prompt}
           placeholder="Describe el cambio que quieres hacer…"
           aria-label="Ask Kodex to modify the presentation"
+          disabled={busy}
           onChange={(event) => setPrompt(event.target.value)}
           onKeyDown={(event) => {
             if (event.key === "Enter" && !event.shiftKey) {
               event.preventDefault();
-              submit();
+              void submit();
             }
           }}
         />
         <button
           type="button"
           aria-label="Send instruction to Kodex"
-          disabled={!prompt.trim()}
-          onClick={() => submit()}
+          disabled={!prompt.trim() || busy}
+          onClick={() => void submit()}
         >
           <SendIcon />
         </button>
-        <small>Kodex applies changes instantly · Ctrl+Z to undo</small>
+        <small>
+          {busy
+            ? `${providerLabel(config.provider)} está preparando cambios…`
+            : `${providerLabel(
+                config.provider,
+              )} · cambios reversibles con Ctrl+Z`}
+        </small>
       </div>
     </aside>
   );
