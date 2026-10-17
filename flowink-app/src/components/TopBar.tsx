@@ -12,6 +12,7 @@ import {
   DownloadIcon,
   ExportIcon,
   FolderIcon,
+  KodexIcon,
   PresentIcon,
   RedoIcon,
   SaveIcon,
@@ -31,11 +32,15 @@ export const TopBar = ({
   navigate,
   showTechnicalPanel,
   onToggleTechnicalPanel,
+  showKodex,
+  onToggleKodex,
 }: {
   api: ExcalidrawImperativeAPI | null;
   navigate: (path: string) => void;
   showTechnicalPanel: boolean;
   onToggleTechnicalPanel: () => void;
+  showKodex: boolean;
+  onToggleKodex: () => void;
 }) => {
   const project = useFlowInkStore((state) => state.project);
   const mode = useFlowInkStore((state) => state.mode);
@@ -105,6 +110,20 @@ export const TopBar = ({
       </nav>
 
       <div className="fi-topbar__right">
+        <Button
+          variant="ghost"
+          className={`fi-kodex-toggle ${showKodex ? "is-active" : ""}`}
+          onClick={onToggleKodex}
+          aria-pressed={showKodex}
+          title="Open Kodex presentation agent"
+        >
+          <span className="fi-kodex-toggle__icon">
+            <KodexIcon />
+            <i />
+          </span>
+          <span className="fi-kodex-toggle__label">Kodex</span>
+          <small>AI</small>
+        </Button>
         {mode === "draw" && (
           <Button
             variant="ghost"

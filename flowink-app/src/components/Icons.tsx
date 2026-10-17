@@ -169,3 +169,19 @@ export const MoreIcon = () => (
     <circle cx="19" cy="12" r="1" fill="currentColor" />
   </Icon>
 );
+export const SendIcon = () => (
+  <Icon>
+    <path d="m3 11 18-8-8 18-2-8-8-2Z" />
+    <path d="m11 13 5-5" />
+  </Icon>
+);
+export const CloseIcon = () => (
+  <Icon>
+    <path d="M6 6l12 12M18 6 6 18" />
+  </Icon>
+);
+export const KodexIcon = () => (
+  <Icon>
+    <path d="M7 8 3 12l4 4M17 8l4 4-4 4M14 4l-4 16" />
+  </Icon>
+);

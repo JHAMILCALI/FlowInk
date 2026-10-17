@@ -85,6 +85,8 @@ interface FlowInkState {
   setLoop: (loop: boolean) => void;
   addAsset: (asset: FlowInkAsset) => void;
   replaceActiveSlide: (slide: FlowInkSlide) => void;
+  applyKodexProject: (project: FlowInkProject) => void;
+  insertKodexSlide: (slide: FlowInkSlide) => void;
   undoFlowInk: () => void;
   redoFlowInk: () => void;
 }
@@ -473,6 +475,27 @@ export const useFlowInkStore = create<FlowInkState>((set, get) => {
         project.slides[activeSlideIndex(state)] = replacement;
       });
       set({ activeSlideId: replacement.id, selectedElementIds: [] });
+    },
+    applyKodexProject: (project) => {
+      const state = get();
+      const next = touchProject(clone(project));
+      set({
+        project: next,
+        activeSlideId: next.slides[0].id,
+        selectedElementIds: [],
+        playhead: 0,
+        isPlaying: false,
+        past: [...state.past.slice(-49), clone(state.project)],
+        future: [],
+        saveStatus: "saving",
+      });
+    },
+    insertKodexSlide: (slide) => {
+      const next = synchronizeElementMeta(slide);
+      commit((project, state) => {
+        project.slides.splice(activeSlideIndex(state) + 1, 0, next);
+      });
+      set({ activeSlideId: next.id, selectedElementIds: [], playhead: 0 });
     },
     undoFlowInk: () => {
       const state = get();

@@ -8,6 +8,7 @@ import {
   saveProject,
 } from "./services/persistence";
 import { getActiveSlide, useFlowInkStore } from "./stores/useFlowInkStore";
+import { createKodexDeck } from "./services/kodex";
 
 describe("FlowInk MVP integration", () => {
   it("creates, duplicates, sequences, saves and reloads a project", async () => {
@@ -65,5 +66,20 @@ describe("FlowInk MVP integration", () => {
       .getState()
       .updateActiveScene(getActiveSlide(beforeScene).scene);
     expect(useFlowInkStore.getState()).toBe(beforeScene);
+  });
+
+  it("applies a Kodex deck as one undoable change", () => {
+    useFlowInkStore.getState().newProject("Before Kodex");
+    useFlowInkStore
+      .getState()
+      .applyKodexProject(createKodexDeck("AI agents", 4));
+
+    expect(useFlowInkStore.getState().project.metadata.title).toBe("AI agents");
+    expect(useFlowInkStore.getState().project.slides).toHaveLength(4);
+
+    useFlowInkStore.getState().undoFlowInk();
+    expect(useFlowInkStore.getState().project.metadata.title).toBe(
+      "Before Kodex",
+    );
   });
 });

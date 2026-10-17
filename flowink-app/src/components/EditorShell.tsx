@@ -5,6 +5,7 @@ import type { ExcalidrawImperativeAPI } from "@excalidraw/excalidraw/types";
 import { saveProject } from "../services/persistence";
 import { getActiveSlide, useFlowInkStore } from "../stores/useFlowInkStore";
 import { FlowInkCanvas } from "./FlowInkCanvas";
+import { KodexPanel } from "./KodexPanel";
 import { SequencePanel } from "./SequencePanel";
 import { SlideStrip } from "./SlideStrip";
 import { StudioTimeline } from "./StudioTimeline";
@@ -24,6 +25,7 @@ export const EditorShell = ({
   const [api, setApi] = useState<ExcalidrawImperativeAPI | null>(null);
   const [cameraRotation, setCameraRotation] = useState(0);
   const [showTechnicalPanel, setShowTechnicalPanel] = useState(false);
+  const [showKodex, setShowKodex] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
   const handleApi = useCallback(
     (next: ExcalidrawImperativeAPI | null) => setApi(next),
@@ -55,7 +57,15 @@ export const EditorShell = ({
         api={api}
         navigate={navigate}
         showTechnicalPanel={showTechnicalPanel}
-        onToggleTechnicalPanel={() => setShowTechnicalPanel((value) => !value)}
+        onToggleTechnicalPanel={() => {
+          setShowTechnicalPanel((value) => !value);
+          setShowKodex(false);
+        }}
+        showKodex={showKodex}
+        onToggleKodex={() => {
+          setShowKodex((value) => !value);
+          setShowTechnicalPanel(false);
+        }}
       />
       <main className="fi-workspace">
         <section className="fi-editor-area">
@@ -95,6 +105,13 @@ export const EditorShell = ({
         </section>
         {mode === "draw" && showTechnicalPanel && <TechnicalPanel api={api} />}
         {mode === "sequence" && <SequencePanel api={api} />}
+        {showKodex && (
+          <KodexPanel
+            api={api}
+            navigate={navigate}
+            onClose={() => setShowKodex(false)}
+          />
+        )}
       </main>
       <SlideStrip />
     </div>
