@@ -3,6 +3,7 @@ import { useEffect, useMemo, useRef } from "react";
 import {
   CaptureUpdateAction,
   Excalidraw,
+  MainMenu,
   type ElementRenderOverrides,
 } from "@excalidraw/excalidraw";
 import type {
@@ -90,8 +91,6 @@ export const FlowInkCanvas = ({
   return (
     <Excalidraw
       initialData={initialData}
-      theme="dark"
-      ui={{ enabled: { zoom: true, scrollBackToContent: true } }}
       autoFocus
       onExcalidrawAPI={(api) => {
         apiRef.current = api;
@@ -104,17 +103,21 @@ export const FlowInkCanvas = ({
         setSelectedElementIds(selected);
         updateActiveScene(serializeScene(elements, appState, files));
       }}
-      UIOptions={{
-        canvasActions: {
-          changeViewBackgroundColor: false,
-          clearCanvas: false,
-          export: false,
-          loadScene: false,
-          saveAsImage: false,
-          saveToActiveFile: false,
-          toggleTheme: false,
-        },
-      }}
-    />
+    >
+      <MainMenu>
+        <MainMenu.DefaultItems.LoadScene />
+        <MainMenu.DefaultItems.SaveToActiveFile />
+        <MainMenu.DefaultItems.Export />
+        <MainMenu.DefaultItems.SaveAsImage />
+        <MainMenu.DefaultItems.CommandPalette />
+        <MainMenu.DefaultItems.SearchMenu />
+        <MainMenu.DefaultItems.Help />
+        <MainMenu.DefaultItems.ClearCanvas />
+        <MainMenu.Separator />
+        <MainMenu.DefaultItems.Preferences />
+        <MainMenu.DefaultItems.ToggleTheme allowSystemTheme={false} />
+        <MainMenu.DefaultItems.ChangeCanvasBackground />
+      </MainMenu>
+    </Excalidraw>
   );
 };

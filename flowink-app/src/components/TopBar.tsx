@@ -26,9 +26,13 @@ const modes: { id: FlowInkMode; label: string }[] = [
 export const TopBar = ({
   api,
   navigate,
+  showTechnicalPanel,
+  onToggleTechnicalPanel,
 }: {
   api: ExcalidrawImperativeAPI | null;
   navigate: (path: string) => void;
+  showTechnicalPanel: boolean;
+  onToggleTechnicalPanel: () => void;
 }) => {
   const project = useFlowInkStore((state) => state.project);
   const mode = useFlowInkStore((state) => state.mode);
@@ -92,6 +96,11 @@ export const TopBar = ({
       </nav>
 
       <div className="fi-topbar__right">
+        {mode === "draw" && (
+          <Button variant="ghost" onClick={onToggleTechnicalPanel}>
+            {showTechnicalPanel ? "Close blocks" : "Blocks & templates"}
+          </Button>
+        )}
         <IconButton
           label="Undo FlowInk change"
           icon={<UndoIcon />}

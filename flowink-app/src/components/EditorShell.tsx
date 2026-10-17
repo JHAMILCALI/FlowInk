@@ -9,7 +9,6 @@ import { SequencePanel } from "./SequencePanel";
 import { SlideStrip } from "./SlideStrip";
 import { StudioTimeline } from "./StudioTimeline";
 import { TechnicalPanel } from "./TechnicalPanel";
-import { ToolRail } from "./ToolRail";
 import { TopBar } from "./TopBar";
 
 export const EditorShell = ({
@@ -23,6 +22,7 @@ export const EditorShell = ({
   const setSaveStatus = useFlowInkStore((state) => state.setSaveStatus);
   const [api, setApi] = useState<ExcalidrawImperativeAPI | null>(null);
   const [cameraRotation, setCameraRotation] = useState(0);
+  const [showTechnicalPanel, setShowTechnicalPanel] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
   const handleApi = useCallback(
     (next: ExcalidrawImperativeAPI | null) => setApi(next),
@@ -47,33 +47,49 @@ export const EditorShell = ({
 
   return (
     <div ref={rootRef} className={`fi-app fi-mode-${mode}`}>
-      <TopBar api={api} navigate={navigate} />
+      <TopBar
+        api={api}
+        navigate={navigate}
+        showTechnicalPanel={showTechnicalPanel}
+        onToggleTechnicalPanel={() => setShowTechnicalPanel((value) => !value)}
+      />
       <main className="fi-workspace">
-        <ToolRail api={api} />
         <section className="fi-editor-area">
-          <div className="fi-stage-shell">
-            <div className="fi-stage-meta">
-              <span>{slide.name}</span>
-              <span>1920 × 1080 · 16:9</span>
-            </div>
-            <div className="fi-stage-frame">
-              <div
-                className="fi-stage-camera"
-                style={{
-                  transform: `rotate(${-cameraRotation}rad) scale(1.005)`,
-                }}
-              >
-                <FlowInkCanvas
-                  key={slide.id}
-                  onApi={handleApi}
-                  onCameraRotation={setCameraRotation}
-                />
-              </div>
-            </div>
+          <div
+            className={mode === "draw" ? "fi-native-canvas" : "fi-stage-shell"}
+          >
+            {mode === "draw" ? (
+              <FlowInkCanvas
+                key={slide.id}
+                onApi={handleApi}
+                onCameraRotation={setCameraRotation}
+              />
+            ) : (
+              <>
+                <div className="fi-stage-meta">
+                  <span>{slide.name}</span>
+                  <span>1920 × 1080 · 16:9</span>
+                </div>
+                <div className="fi-stage-frame">
+                  <div
+                    className="fi-stage-camera"
+                    style={{
+                      transform: `rotate(${-cameraRotation}rad) scale(1.005)`,
+                    }}
+                  >
+                    <FlowInkCanvas
+                      key={slide.id}
+                      onApi={handleApi}
+                      onCameraRotation={setCameraRotation}
+                    />
+                  </div>
+                </div>
+              </>
+            )}
           </div>
           {mode === "studio" && <StudioTimeline />}
         </section>
-        {mode === "draw" && <TechnicalPanel api={api} />}
+        {mode === "draw" && showTechnicalPanel && <TechnicalPanel api={api} />}
         {mode === "sequence" && <SequencePanel api={api} />}
       </main>
       <SlideStrip />

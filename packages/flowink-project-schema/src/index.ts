@@ -195,8 +195,8 @@ const now = () => new Date().toISOString();
 export const createEmptyScene = (): FlowInkScene => ({
   elements: [],
   appState: {
-    viewBackgroundColor: "#0b100d",
-    currentItemStrokeColor: "#e8f2ea",
+    viewBackgroundColor: "#ffffff",
+    currentItemStrokeColor: "#1e1e1e",
     currentItemBackgroundColor: "transparent",
   },
   files: {},

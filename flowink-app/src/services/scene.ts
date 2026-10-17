@@ -50,7 +50,15 @@ export const toExcalidrawInitialData = (
   scene: FlowInkScene,
 ): ExcalidrawInitialDataState => ({
   elements: scene.elements as unknown as readonly ExcalidrawElement[],
-  appState: scene.appState as Partial<AppState>,
+  appState:
+    scene.elements.length === 0 &&
+    scene.appState.viewBackgroundColor === "#0b100d"
+      ? {
+          ...scene.appState,
+          viewBackgroundColor: "#ffffff",
+          currentItemStrokeColor: "#1e1e1e",
+        }
+      : (scene.appState as Partial<AppState>),
   files: scene.files as BinaryFiles,
   scrollToContent: true,
 });
