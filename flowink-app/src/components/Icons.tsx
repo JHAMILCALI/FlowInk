@@ -102,6 +102,23 @@ export const ExportIcon = () => (
     <path d="M12 3v12M7 8l5-5 5 5M5 14v6h14v-6" />
   </Icon>
 );
+export const DownloadIcon = () => (
+  <Icon>
+    <path d="M12 3v12M7 10l5 5 5-5M5 20h14" />
+  </Icon>
+);
+export const FolderIcon = () => (
+  <Icon>
+    <path d="M3 7h7l2 2h9v10H3V7Z" />
+    <path d="M3 7V5h7l2 2" />
+  </Icon>
+);
+export const SaveIcon = () => (
+  <Icon>
+    <path d="M5 3h12l2 2v16H5V3Z" />
+    <path d="M8 3v6h8V3M8 21v-7h8v7" />
+  </Icon>
+);
 export const LayersIcon = () => (
   <Icon>
     <path d="m12 3 9 5-9 5-9-5 9-5Z" />

@@ -23,6 +23,7 @@ import {
   toExcalidrawInitialData,
   toExcalidrawElements,
 } from "../services/scene";
+import { sceneForEditor } from "../services/sceneTheme";
 import { useFlowInkStore } from "../stores/useFlowInkStore";
 import { ChevronLeftIcon, ChevronRightIcon } from "./Icons";
 
@@ -53,6 +54,7 @@ export const Presenter = ({
   player?: boolean;
 }) => {
   const project = useFlowInkStore((state) => state.project);
+  const editorTheme = useFlowInkStore((state) => state.editorTheme);
   const [position, setPosition] = useState<PresentationPosition>(firstPosition);
   const [api, setApi] = useState<ExcalidrawImperativeAPI | null>(null);
   const [cameraRotation, setCameraRotation] = useState(0);
@@ -61,9 +63,13 @@ export const Presenter = ({
   const animationRef = useRef(0);
   const transitioningRef = useRef(false);
   const slide = project.slides[position.slideIndex] ?? project.slides[0];
+  const themedSlide = useMemo(
+    () => ({ ...slide, scene: sceneForEditor(slide.scene, editorTheme) }),
+    [editorTheme, slide],
+  );
   const initialData = useMemo(
-    () => toExcalidrawInitialData(slide.scene),
-    [slide.id],
+    () => toExcalidrawInitialData(themedSlide.scene),
+    [themedSlide],
   );
 
   const applyFrame = useCallback(
@@ -71,7 +77,7 @@ export const Presenter = ({
       if (!api) return;
       api.updateScene({
         elements: toExcalidrawElements(
-          buildSequenceScene(slide, stepIndex, progress),
+          buildSequenceScene(themedSlide, stepIndex, progress),
         ),
         captureUpdate: CaptureUpdateAction.NEVER,
       });
@@ -92,7 +98,7 @@ export const Presenter = ({
         setCameraRotation(camera.rotation);
       }
     },
-    [api, slide],
+    [api, slide, themedSlide],
   );
 
   useEffect(() => {
@@ -125,6 +131,10 @@ export const Presenter = ({
         return;
       }
       const targetSlide = project.slides[target.slideIndex];
+      const themedTargetSlide = {
+        ...targetSlide,
+        scene: sceneForEditor(targetSlide.scene, editorTheme),
+      };
       const type = targetSlide.transition.type;
       const ownerWindow = rootRef.current?.ownerDocument.defaultView;
       if (!ownerWindow) return;
@@ -141,7 +151,11 @@ export const Presenter = ({
           const progress = Math.min(1, (clock - start) / duration);
           api.updateScene({
             elements: toExcalidrawElements(
-              buildSmartTransitionScene(slide, targetSlide, progress),
+              buildSmartTransitionScene(
+                themedSlide,
+                themedTargetSlide,
+                progress,
+              ),
             ),
             captureUpdate: CaptureUpdateAction.NEVER,
           });
@@ -162,7 +176,7 @@ export const Presenter = ({
         targetSlide.transition.duration * 1000,
       );
     },
-    [api, position.slideIndex, project.slides, slide],
+    [api, editorTheme, position.slideIndex, project.slides, slide, themedSlide],
   );
 
   const next = useCallback(
@@ -222,9 +236,9 @@ export const Presenter = ({
         style={{ transform: `rotate(${-cameraRotation}rad) scale(1.01)` }}
       >
         <Excalidraw
-          key={slide.id}
+          key={`${slide.id}:${editorTheme}`}
           initialData={initialData}
-          theme="dark"
+          theme={editorTheme}
           ui={false}
           interaction={false}
           viewModeEnabled

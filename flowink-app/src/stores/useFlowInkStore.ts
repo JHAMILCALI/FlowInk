@@ -32,6 +32,7 @@ interface FlowInkState {
   project: FlowInkProject;
   activeSlideId: string;
   mode: FlowInkMode;
+  editorTheme: "light" | "dark";
   selectedElementIds: string[];
   playhead: number;
   isPlaying: boolean;
@@ -48,6 +49,7 @@ interface FlowInkState {
   newProject: (title?: string) => void;
   renameProject: (title: string) => void;
   setMode: (mode: FlowInkMode) => void;
+  setEditorTheme: (theme: "light" | "dark") => void;
   setActiveSlide: (slideId: string) => void;
   setSelectedElementIds: (ids: string[]) => void;
   updateActiveScene: (scene: FlowInkScene) => void;
@@ -158,6 +160,7 @@ export const useFlowInkStore = create<FlowInkState>((set, get) => {
     project: baseProject,
     activeSlideId: baseProject.slides[0].id,
     mode: "draw",
+    editorTheme: "light",
     selectedElementIds: [],
     playhead: 0,
     isPlaying: false,
@@ -199,6 +202,10 @@ export const useFlowInkStore = create<FlowInkState>((set, get) => {
         project.metadata.title = title || "Untitled FlowInk";
       }),
     setMode: (mode) => set({ mode, isPlaying: false }),
+    setEditorTheme: (editorTheme) =>
+      set((state) =>
+        state.editorTheme === editorTheme ? state : { editorTheme },
+      ),
     setActiveSlide: (activeSlideId) =>
       set({
         activeSlideId,

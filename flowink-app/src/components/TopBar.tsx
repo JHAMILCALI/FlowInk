@@ -9,9 +9,12 @@ import { saveProject } from "../services/persistence";
 import { useFlowInkStore } from "../stores/useFlowInkStore";
 import { ExportMenu } from "./ExportMenu";
 import {
+  DownloadIcon,
   ExportIcon,
+  FolderIcon,
   PresentIcon,
   RedoIcon,
+  SaveIcon,
   SparkIcon,
   UndoIcon,
 } from "./Icons";
@@ -51,35 +54,41 @@ export const TopBar = ({
 
   return (
     <header className="fi-topbar">
-      <button
-        type="button"
-        className="fi-wordmark"
-        onClick={() => setShowRecent(true)}
-      >
-        <span>
-          <SparkIcon />
-        </span>
-        <strong>FLOWINK</strong>
-        <small>BETA</small>
-      </button>
-      <span className="fi-topbar__separator" />
-      <input
-        key={project.metadata.title}
-        className="fi-project-title"
-        aria-label="Project title"
-        defaultValue={project.metadata.title}
-        onBlur={(event) => renameProject(event.target.value)}
-        onKeyDown={(event) =>
-          event.key === "Enter" && event.currentTarget.blur()
-        }
-      />
-      <div className="fi-save-state" data-state={saveStatus}>
-        <span />{" "}
-        {saveStatus === "saved"
-          ? "Saved locally"
-          : saveStatus === "saving"
-          ? "Saving…"
-          : "Save failed"}
+      <div className="fi-topbar__left">
+        <button
+          type="button"
+          className="fi-wordmark"
+          title="Recent projects"
+          onClick={() => setShowRecent(true)}
+        >
+          <span>
+            <SparkIcon />
+          </span>
+          <strong>FLOWINK</strong>
+          <small>BETA</small>
+        </button>
+        <span className="fi-topbar__separator" />
+        <div className="fi-project-meta">
+          <span className="fi-project-meta__label">Project</span>
+          <input
+            key={project.metadata.title}
+            className="fi-project-title"
+            aria-label="Project title"
+            defaultValue={project.metadata.title}
+            onBlur={(event) => renameProject(event.target.value)}
+            onKeyDown={(event) =>
+              event.key === "Enter" && event.currentTarget.blur()
+            }
+          />
+        </div>
+        <div className="fi-save-state" data-state={saveStatus}>
+          <span />
+          {saveStatus === "saved"
+            ? "Saved"
+            : saveStatus === "saving"
+            ? "Saving…"
+            : "Save failed"}
+        </div>
       </div>
 
       <nav className="fi-mode-switch" aria-label="Workspace mode">
@@ -97,22 +106,32 @@ export const TopBar = ({
 
       <div className="fi-topbar__right">
         {mode === "draw" && (
-          <Button variant="ghost" onClick={onToggleTechnicalPanel}>
-            {showTechnicalPanel ? "Close blocks" : "Blocks & templates"}
+          <Button
+            variant="ghost"
+            className={`fi-blocks-button ${
+              showTechnicalPanel ? "is-active" : ""
+            }`}
+            onClick={onToggleTechnicalPanel}
+            aria-pressed={showTechnicalPanel}
+            title="Blocks and templates"
+          >
+            <SparkIcon /> <span>Blocks & templates</span>
           </Button>
         )}
-        <IconButton
-          label="Undo FlowInk change"
-          icon={<UndoIcon />}
-          disabled={!canUndo}
-          onClick={undo}
-        />
-        <IconButton
-          label="Redo FlowInk change"
-          icon={<RedoIcon />}
-          disabled={!canRedo}
-          onClick={redo}
-        />
+        <div className="fi-topbar__group fi-topbar__history">
+          <IconButton
+            label="Undo FlowInk change"
+            icon={<UndoIcon />}
+            disabled={!canUndo}
+            onClick={undo}
+          />
+          <IconButton
+            label="Redo FlowInk change"
+            icon={<RedoIcon />}
+            disabled={!canRedo}
+            onClick={redo}
+          />
+        </div>
         <input
           hidden
           ref={importInput}
@@ -120,11 +139,12 @@ export const TopBar = ({
           accept=".flowink,application/json"
           onChange={(event) => {
             const file = event.currentTarget.files?.[0];
+            const ownerWindow = event.currentTarget.ownerDocument.defaultView;
             if (file) {
               void importProjectFile(file)
                 .then(setProject)
                 .catch((error: unknown) =>
-                  window.alert(
+                  ownerWindow?.alert(
                     error instanceof Error ? error.message : "Import failed",
                   ),
                 );
@@ -132,49 +152,67 @@ export const TopBar = ({
             event.currentTarget.value = "";
           }}
         />
-        <Button variant="ghost" onClick={() => importInput.current?.click()}>
-          Open
-        </Button>
-        <Button
-          variant="ghost"
-          onClick={() => {
-            setSaveStatus("saving");
-            void saveProject(project)
-              .then(() => setSaveStatus("saved"))
-              .catch(() => setSaveStatus("error"));
-          }}
-        >
-          Save
-        </Button>
-        <div className="fi-menu-anchor">
+        <div className="fi-topbar__group fi-topbar__files">
           <Button
-            variant="secondary"
-            onClick={() => setShowExport((value) => !value)}
+            variant="ghost"
+            className="fi-topbar__text-action"
+            onClick={() => importInput.current?.click()}
+            aria-label="Open project"
+            title="Open project"
           >
-            <ExportIcon /> Export
+            <FolderIcon /> <span>Open</span>
           </Button>
-          {showExport && (
-            <ExportMenu api={api} onClose={() => setShowExport(false)} />
-          )}
+          <Button
+            variant="ghost"
+            className="fi-topbar__text-action"
+            aria-label="Save project locally"
+            title="Save project locally"
+            onClick={() => {
+              setSaveStatus("saving");
+              void saveProject(project)
+                .then(() => setSaveStatus("saved"))
+                .catch(() => setSaveStatus("error"));
+            }}
+          >
+            <SaveIcon /> <span>Save</span>
+          </Button>
         </div>
-        <Button variant="primary" onClick={() => navigate("/present")}>
-          <PresentIcon /> Present
-        </Button>
-        <button
-          type="button"
-          className="fi-obs-button"
-          onClick={() => navigate("/obs")}
-        >
-          OBS
-        </button>
-        <button
-          type="button"
-          className="fi-project-download"
-          title="Download .flowink"
-          onClick={() => downloadProject(project)}
-        >
-          ↓
-        </button>
+        <div className="fi-topbar__group fi-topbar__publish">
+          <div className="fi-menu-anchor">
+            <Button
+              variant="secondary"
+              onClick={() => setShowExport((value) => !value)}
+              aria-expanded={showExport}
+              title="Export"
+            >
+              <ExportIcon /> <span>Export</span>
+            </Button>
+            {showExport && (
+              <ExportMenu api={api} onClose={() => setShowExport(false)} />
+            )}
+          </div>
+          <Button
+            variant="primary"
+            title="Present"
+            onClick={() => navigate("/present")}
+          >
+            <PresentIcon /> <span>Present</span>
+          </Button>
+          <button
+            type="button"
+            className="fi-obs-button"
+            title="Open OBS output"
+            onClick={() => navigate("/obs")}
+          >
+            <span className="fi-obs-button__dot" /> OBS
+          </button>
+          <IconButton
+            label="Download .flowink project"
+            icon={<DownloadIcon />}
+            className="fi-project-download"
+            onClick={() => downloadProject(project)}
+          />
+        </div>
       </div>
       {showRecent && <RecentProjects onClose={() => setShowRecent(false)} />}
     </header>

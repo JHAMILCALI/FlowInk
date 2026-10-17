@@ -34,7 +34,17 @@ export const App = () => {
   const hydrated = useFlowInkStore((state) => state.hydrated);
   const setHydrated = useFlowInkStore((state) => state.setHydrated);
   const setProject = useFlowInkStore((state) => state.setProject);
+  const editorTheme = useFlowInkStore((state) => state.editorTheme);
   useAutosave();
+
+  useEffect(() => {
+    const ownerWindow = rootRef.current?.ownerDocument.defaultView;
+    try {
+      ownerWindow?.localStorage.setItem("flowink-editor-theme", editorTheme);
+    } catch {
+      // The current theme remains active for this session.
+    }
+  }, [editorTheme]);
 
   useEffect(() => {
     void loadLastProject()

@@ -17,6 +17,7 @@ export const EditorShell = ({
   navigate: (path: string) => void;
 }) => {
   const mode = useFlowInkStore((state) => state.mode);
+  const editorTheme = useFlowInkStore((state) => state.editorTheme);
   const slide = useFlowInkStore(getActiveSlide);
   const project = useFlowInkStore((state) => state.project);
   const setSaveStatus = useFlowInkStore((state) => state.setSaveStatus);
@@ -46,7 +47,10 @@ export const EditorShell = ({
   }, [project, setSaveStatus]);
 
   return (
-    <div ref={rootRef} className={`fi-app fi-mode-${mode}`}>
+    <div
+      ref={rootRef}
+      className={`fi-app fi-mode-${mode} fi-theme-${editorTheme}`}
+    >
       <TopBar
         api={api}
         navigate={navigate}
